@@ -1,95 +1,144 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : BaseController
 {
-    [SerializeField]
-    float _speed = 10.0f;
+	int _mask = (1 << (int)Define.Layer.Ground) | (1 << (int)Define.Layer.Monster);
 
-	Vector3 _destPos;
+	PlayerStat _stat;
+	bool _stopSkill = false;
 
-    void Start()
+	public override void Init()
     {
-		Managers.Input.MouseAction -= OnMouseClicked;
-		Managers.Input.MouseAction += OnMouseClicked;
+		WorldObjectType = Define.WorldObject.Player;
+		_stat = gameObject.GetComponent<PlayerStat>();
+		Managers.Input.MouseAction -= OnMouseEvent;
+		Managers.Input.MouseAction += OnMouseEvent;
 
-		// TEMP
-		Managers.UI.ShowSceneUI<UI_Inven>();
+		if (gameObject.GetComponentInChildren<UI_HPBar>() == null)
+			Managers.UI.MakeWorldSpaceUI<UI_HPBar>(transform);
 	}
 
-	public enum PlayerState
+	protected override void UpdateMoving()
 	{
-		Die,
-		Moving,
-		Idle,
-	}
-
-	PlayerState _state = PlayerState.Idle;
-
-	void UpdateDie()
-	{
-		// 아무것도 못함
-
-	}
-
-	void UpdateMoving()
-	{
-		Vector3 dir = _destPos - transform.position;
-		if (dir.magnitude < 0.0001f)
+		// 몬스터가 내 사정거리보다 가까우면 공격
+		if (_lockTarget != null)
 		{
-			_state = PlayerState.Idle;
+			_destPos = _lockTarget.transform.position;
+			float distance = (_destPos - transform.position).magnitude;
+			if (distance <= 1)
+			{
+				State = Define.State.Skill;
+				return;
+			}
+		}
+
+		// 이동
+		Vector3 dir = _destPos - transform.position;
+		dir.y = 0;
+
+		if (dir.magnitude < 0.1f)
+		{
+			State = Define.State.Idle;
 		}
 		else
 		{
-			float moveDist = Mathf.Clamp(_speed * Time.deltaTime, 0, dir.magnitude);
+			Debug.DrawRay(transform.position + Vector3.up * 0.5f, dir.normalized, Color.green);
+			if (Physics.Raycast(transform.position + Vector3.up * 0.5f, dir, 1.0f, LayerMask.GetMask("Block")))
+			{
+				if (Input.GetMouseButton(0) == false)
+					State = Define.State.Idle;
+				return;
+			}
+
+			float moveDist = Mathf.Clamp(_stat.MoveSpeed * Time.deltaTime, 0, dir.magnitude);
 			transform.position += dir.normalized * moveDist;
 			transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 20 * Time.deltaTime);
 		}
-
-		// 애니메이션
-		Animator anim = GetComponent<Animator>();
-		// 현재 게임 상태에 대한 정보를 넘겨준다
-		anim.SetFloat("speed", _speed);
 	}
 
-	void UpdateIdle()
+	protected override void UpdateSkill()
 	{
-		// 애니메이션
-		Animator anim = GetComponent<Animator>();
-
-		anim.SetFloat("speed", 0);
+		if (_lockTarget != null)
+		{
+			Vector3 dir = _lockTarget.transform.position - transform.position;
+			Quaternion quat = Quaternion.LookRotation(dir);
+			transform.rotation = Quaternion.Lerp(transform.rotation, quat, 20 * Time.deltaTime);
+		}
 	}
 
-	void Update()
-    {
-		switch (_state)
+	void OnHitEvent()
+	{
+		if (_lockTarget != null)
 		{
-			case PlayerState.Die:
-				UpdateDie();
+			Stat targetStat = _lockTarget.GetComponent<Stat>();
+			targetStat.OnAttacked(_stat);
+		}
+
+		if (_stopSkill)
+		{
+			State = Define.State.Idle;
+		}
+		else
+		{
+			State = Define.State.Skill;
+		}
+	}
+
+	void OnMouseEvent(Define.MouseEvent evt)
+	{
+		switch (State)
+		{
+			case Define.State.Idle:
+				OnMouseEvent_IdleRun(evt);
 				break;
-			case PlayerState.Moving:
-				UpdateMoving();
+			case Define.State.Moving:
+				OnMouseEvent_IdleRun(evt);
 				break;
-			case PlayerState.Idle:
-				UpdateIdle();
+			case Define.State.Skill:
+				{
+					if (evt == Define.MouseEvent.PointerUp)
+						_stopSkill = true;
+				}
 				break;
 		}
 	}
 
-	void OnMouseClicked(Define.MouseEvent evt)
+	void OnMouseEvent_IdleRun(Define.MouseEvent evt)
 	{
-		if (_state == PlayerState.Die)
-			return;
-
-		Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-		Debug.DrawRay(Camera.main.transform.position, ray.direction * 100.0f, Color.red, 1.0f);
-
 		RaycastHit hit;
-		if (Physics.Raycast(ray, out hit, 100.0f, LayerMask.GetMask("Wall")))
+		Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+		bool raycastHit = Physics.Raycast(ray, out hit, 100.0f, _mask);
+		//Debug.DrawRay(Camera.main.transform.position, ray.direction * 100.0f, Color.red, 1.0f);
+
+		switch (evt)
 		{
-			_destPos = hit.point;
-			_state = PlayerState.Moving;
+			case Define.MouseEvent.PointerDown:
+				{
+					if (raycastHit)
+					{
+						_destPos = hit.point;
+						State = Define.State.Moving;
+						_stopSkill = false;
+
+						if (hit.collider.gameObject.layer == (int)Define.Layer.Monster)
+							_lockTarget = hit.collider.gameObject;
+						else
+							_lockTarget = null;
+					}
+				}
+				break;
+			case Define.MouseEvent.Press:
+				{
+					if (_lockTarget == null && raycastHit)
+						_destPos = hit.point;
+				}
+				break;
+			case Define.MouseEvent.PointerUp:
+				_stopSkill = true;
+				break;
 		}
 	}
 }
