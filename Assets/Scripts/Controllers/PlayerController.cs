@@ -1,20 +1,22 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-	[SerializeField]
-	float _speed = 10.0f;
+    [SerializeField]
+    float _speed = 10.0f;
+
 	Vector3 _destPos;
 
-	void Start()
-	{
+    void Start()
+    {
 		Managers.Input.MouseAction -= OnMouseClicked;
 		Managers.Input.MouseAction += OnMouseClicked;
+
+		// TEMP
+		Managers.UI.ShowSceneUI<UI_Inven>();
 	}
-
-
 
 	public enum PlayerState
 	{
@@ -22,20 +24,21 @@ public class PlayerController : MonoBehaviour
 		Moving,
 		Idle,
 	}
+
 	PlayerState _state = PlayerState.Idle;
+
 	void UpdateDie()
 	{
-		// ¾Æ¹«°Íµµ ¸øÇÔ
+		// ì•„ë¬´ê²ƒë„ ëª»í•¨
+
 	}
 
 	void UpdateMoving()
 	{
-
 		Vector3 dir = _destPos - transform.position;
 		if (dir.magnitude < 0.0001f)
 		{
 			_state = PlayerState.Idle;
-
 		}
 		else
 		{
@@ -44,31 +47,22 @@ public class PlayerController : MonoBehaviour
 			transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(dir), 20 * Time.deltaTime);
 		}
 
-		//¾Ö´Ï¸ŞÀÌ¼Ç
+		// ì• ë‹ˆë©”ì´ì…˜
 		Animator anim = GetComponent<Animator>();
-		// ÇöÀç °ÔÀÓ »óÅÂ¿¡ ´ëÇÑ Á¤º¸¸¦ ³Ñ°ÜÁØ´Ù
+		// í˜„ì¬ ê²Œì„ ìƒíƒœì— ëŒ€í•œ ì •ë³´ë¥¼ ë„˜ê²¨ì¤€ë‹¤
 		anim.SetFloat("speed", _speed);
-
 	}
-
-	void OnRunEvent()
-    {
-		Debug.Log("¶Ñ¹÷ ¶Ñ¹÷~~");
-    }
 
 	void UpdateIdle()
 	{
-		//¾Ö´Ï¸ŞÀÌ¼Ç
+		// ì• ë‹ˆë©”ì´ì…˜
 		Animator anim = GetComponent<Animator>();
+
 		anim.SetFloat("speed", 0);
-
 	}
+
 	void Update()
-	{
-
-
-
-
+    {
 		switch (_state)
 		{
 			case PlayerState.Die:

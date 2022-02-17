@@ -1,25 +1,25 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class Managers : MonoBehaviour
 {
-    static Managers s_instance; // À¯ÀÏ¼ºÀÌ º¸ÀåµÈ´Ù
-    static Managers Instance { get { Init(); return s_instance; } } // À¯ÀÏÇÑ ¸Å´ÏÀú¸¦ °®°í¿Â´Ù
+    static Managers s_instance; // ìœ ì¼ì„±ì´ ë³´ì¥ëœë‹¤
+    static Managers Instance { get { Init(); return s_instance; } } // ìœ ì¼í•œ ë§¤ë‹ˆì €ë¥¼ ê°–ê³ ì˜¨ë‹¤
 
     InputManager _input = new InputManager();
     ResourceManager _resource = new ResourceManager();
+    UIManager _ui = new UIManager();
 
     public static InputManager Input { get { return Instance._input; } }
     public static ResourceManager Resource { get { return Instance._resource; } }
+    public static UIManager UI { get { return Instance._ui; } }
 
-    // Start is called before the first frame update
     void Start()
     {
         Init();
-    }
+	}
 
-    // Update is called once per frame
     void Update()
     {
         _input.OnUpdate();
@@ -29,7 +29,7 @@ public class Managers : MonoBehaviour
     {
         if (s_instance == null)
         {
-            GameObject go = GameObject.Find("@Managers");
+			GameObject go = GameObject.Find("@Managers");
             if (go == null)
             {
                 go = new GameObject { name = "@Managers" };
@@ -38,6 +38,6 @@ public class Managers : MonoBehaviour
 
             DontDestroyOnLoad(go);
             s_instance = go.GetComponent<Managers>();
-        }
-    }
+		}		
+	}
 }
